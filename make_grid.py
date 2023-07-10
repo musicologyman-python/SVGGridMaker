@@ -71,10 +71,10 @@ def main():
                 break
 
         min_y = prompt_for_signed_integer(
-                'Enter the minimum horizontal value (min_y): ' )
+                'Enter the minimum vertical value (min_y): ' )
         while True:
             max_y = prompt_for_signed_integer(
-                    'Enter the maximum horizontal value (max_y): ' )
+                    'Enter the maximum vertical value (max_y): ' )
             if min_y >= max_y:
                 print(f"The maximum value for y must be greater than {min_y}.")
             else:
