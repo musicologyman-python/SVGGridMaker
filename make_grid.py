@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import functools
 import io
 import math
@@ -10,103 +11,89 @@ from typing import NamedTuple
 
 NUMBER_RE = re.compile(r'^-?\d+$')
 
+AXIS_CSS_CLASS_NAME = 'axis'
+GRIDLINE_CSS_CLASS_NAME = 'gridline'
+    
+
 class GridParameters(NamedTuple):
     min_x: int
     max_x: int
     min_y: int
     max_y: int
     increment: int
-    extension: int
+    extends: int
 
 def make_grid(gp: GridParameters):
     with io.StringIO() as sp:
         prints = functools.partial(print, file=sp)
+
+        # generate vertical lines
         for i in range(gp.min_x, gp.max_x + gp.increment, gp.increment):
-            class_ = "axis" if i == 0 else "gridline"
-            prints(f'<line x1="{i}" y1="{gp.min_y - gp.extension}" x2="{i}" '
-                   f'y2="{gp.max_y + gp.extension}" class="{class_}"/>')
+            class_ = AXIS_CSS_CLASS_NAME if i == 0 else GRIDLINE_CSS_CLASS_NAME
+            prints(f'<line x1="{i}" y1="{gp.min_y - gp.extends}" x2="{i}" '
+                   f'y2="{gp.max_y + gp.extends}" class="{class_}"/>')
+
+        # generate horizontal lines
         for i in range(gp.min_y, gp.max_y + gp.increment, gp.increment):
-            class_ = "axis" if i == 0 else "gridline"
-            prints(f'<line x1="{gp.min_x - gp.extension}" y1="{i}" '
-                   f'x2="{gp.max_x + gp.extension}" '
+            class_ = AXIS_CSS_CLASS_NAME if i == 0 else GRIDLINE_CSS_CLASS_NAME
+            prints(f'<line x1="{gp.min_x - gp.extends}" y1="{i}" '
+                   f'x2="{gp.max_x + gp.extends}" '
                    f'y2="{i}" class="{class_}"/>')
 
         return sp.getvalue()
         
+def command_line_setup():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--min_x', type=int, default=0, 
+                        help='The x-coordinate of the leftmost gridline')
+    parser.add_argument('--max_x', type=int, default=850, 
+                        help='The x-coordinate of the rightmost '
+                                    'gridline')
+    parser.add_argument('--min_y', type=int, default=0, 
+                        help='The y-coordinate of the leftmost gridline')
+    parser.add_argument('--max_y', type=int, default=1100, 
+                        help='The y-coordinate of the leftmost gridline')
+    parser.add_argument('-i', '--increment', type=int,
+                        help='The number of units between gridlines')
+    parser.add_argument('-e', '--extends', type=int,
+                        help='The number of units the gridline extends '
+                        'past the left/right/top/bottom-most perpendicular '
+                        'gridline')
+    return parser.parse_args()
 
-def prompt_for_signed_integer(prompt, default=None):
-
-    response = input(prompt).strip()
-    
-    if not response and default is not None:
-        response = default
-
-    while True:
-        match response:
-            case int() | float():
-                return response
-
-        if NUMBER_RE.search(response) is not None:
-                return int(response)
-
-        response = input(f'The value "{response.trim()}" is not an integer. '
-                         'Please enter an integer or "q" (case insensitive) '
-                         'to abort: ')
-        if response.trim().lower() == 'q':
-            sys.exit(-1)
-             
+            
 def main():
 
-    NUMBER_RE = re.compile(r'^\s*-?\d+\s*$')
-
-    try:
-        min_x = prompt_for_signed_integer(
-                'Enter the minimum horizontal value (min_x): ' )
-        while True:
-            max_x = prompt_for_signed_integer(
-                    'Enter the maximum horizontal value (max_x): ' )
-            if min_x >= max_x:
-                print(f"The maximum value for x must be greater than {min_x}.")
-            else:
-                break
-
-        min_y = prompt_for_signed_integer(
-                'Enter the minimum vertical value (min_y): ' )
-        while True:
-            max_y = prompt_for_signed_integer(
-                    'Enter the maximum vertical value (max_y): ' )
-            if min_y >= max_y:
-                print(f"The maximum value for y must be greater than {min_y}.")
-            else:
-                break
-
-
-        default_incr = math.gcd(min_x, max_x, min_y, max_y)
-        incr = prompt_for_signed_integer(
-                f'Enter the grid increment(default={default_incr}): ', 
-                default=default_incr)
-        extension = prompt_for_signed_integer(f'How far will the grid line '
-                    'extend before the first and after the last perpendicular '
-                    f'grid line? (default {incr/2}) ', default=incr/2)
-
-        gp = GridParameters(min_x = min_x,
-                            max_x = max_x,
-                            min_y = min_y,
-                            max_y = max_y,
-                            increment = incr,
-                            extension = extension)
+    args = command_line_setup()
         
-        grid_text = make_grid(gp)
-        pyperclip.copy(grid_text)
+    min_x = args.min_x
+    max_x = args.max_x
+    min_y = args.min_y
+    max_y = args.max_y
+    incr = args.increment
+    extends = args.extends
 
-        print()
-        print("The following SVG elements have been generated and copied to "
-              "the clipboard.")
-        print(grid_text)
-        print()
+    if incr is None:
+        incr = math.gcd(min_x, max_x, min_y, max_y)
+    if extends is None:
+        extends = incr // 2 
 
-    except SystemExit:
-        ...
+    gp = GridParameters(min_x = min_x,
+                        max_x = max_x,
+                        min_y = min_y,
+                        max_y = max_y,
+                        increment = incr,
+                        extends = extends)
+    
+    grid_text = make_grid(gp)
+    pyperclip.copy(grid_text)
+
+    print()
+    print("The following SVG elements have been generated and copied to "
+          "the clipboard.")
+    print(grid_text)
+    print()
+
 
 if __name__ == '__main__':
     main()
